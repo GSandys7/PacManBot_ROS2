@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'pacmanbot_planning'
+package_name = 'pacmanbot_package'
 
 setup(
     name=package_name,
@@ -24,7 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'planner_stub = pacmanbot_planning.planner_stub:main',
+            'planner_stub = pacmanbot_package.planner_stub:main',
+            'game_light = pacmanbot_package.game_light:main',
         ],
     },
 )
