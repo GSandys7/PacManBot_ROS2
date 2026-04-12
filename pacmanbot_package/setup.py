@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'audio_node = pacmanbot_package.audio_node:main',
             'planner_stub = pacmanbot_package.planner_stub:main',
             'game_light = pacmanbot_package.game_light:main',
         ],
