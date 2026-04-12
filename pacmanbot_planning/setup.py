@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'planner_stub = pacmanbot_planning.planner_stub:main',
+            'audio_node = pacmanbot_planning.audio_node:main',
         ],
     },
 )
