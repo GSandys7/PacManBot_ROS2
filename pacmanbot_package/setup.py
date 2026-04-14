@@ -1,4 +1,6 @@
 from setuptools import find_packages, setup
+import os
+from glob import glob
 
 package_name = 'pacmanbot_package'
 
@@ -10,23 +12,26 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'launch'),
+         glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'maps'),
+         glob('maps/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='The Cool Team',
     maintainer_email='eva@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Pacman TurtleBot Package',
+    license='TODO',
     extras_require={
-        'test': [
-            'pytest',
-        ],
+        'test': ['pytest'],
     },
     entry_points={
         'console_scripts': [
             'audio_node = pacmanbot_package.audio_node:main',
             'planner_stub = pacmanbot_package.planner_stub:main',
-            'game_light = pacmanbot_package.game_light:main',
+            'game_light_node = pacmanbot_package.game_light_node:main',
+            'pellet_manager = pacmanbot_package.pellet_manager:main',
         ],
     },
 )
