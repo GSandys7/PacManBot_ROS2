@@ -1,42 +1,41 @@
 from launch import LaunchDescription
-from launch_ros.actions import Node
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 import os
 
 
 def generate_launch_description():
-    pkg_share = get_package_share_directory('pacmanbot_package')
-    map_file = os.path.join(pkg_share, 'maps', 'map_01.yaml')
+    tb4_nav_share = get_package_share_directory('turtlebot4_navigation')
+    tb4_viz_share = get_package_share_directory('turtlebot4_viz')
+
+    common_args = {
+        'namespace': '/robot_15',
+        'use_sim_time': 'false',
+        'tf_topic': '/robot_15/tf',
+        'tf_static_topic': '/robot_15/tf_static',
+    }
+
+    slam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(tb4_nav_share, 'launch', 'slam.launch.py')
+        ),
+        launch_arguments=common_args.items()
+    )
 
     nav2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory('turtlebot4_navigation'),
-                'launch',
-                'localization.launch.py'
-            )
+            os.path.join(tb4_nav_share, 'launch', 'nav2.launch.py')
         ),
-        launch_arguments={
-            'namespace': '/robot_15',          
-            'use_sim_time': 'false',
-            'map': map_file,
-            'tf_topic': '/robot_15/tf',
-            'tf_static_topic': '/robot_15/tf_static',
-        }.items()
+        launch_arguments=common_args.items()
     )
 
-    rviz = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        output='screen',
-        remappings=[
-            ('/tf', '/robot_15/tf'),
-            ('/tf_static', '/robot_15/tf_static'),
-            ('/initialpose', '/robot_15/initialpose'),
-        ]
+    rviz_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(tb4_viz_share, 'launch', 'view_navigation.launch.py')
+        ),
+        launch_arguments=common_args.items()
     )
 
     pellet_manager = Node(
@@ -46,8 +45,19 @@ def generate_launch_description():
         output='screen'
     )
 
+    delayed_nav2 = TimerAction(
+        period=8.0,
+        actions=[nav2_launch]
+    )
+
+    delayed_rviz = TimerAction(
+        period=10.0,
+        actions=[rviz_launch]
+    )
+
     return LaunchDescription([
-        nav2_launch,
-        rviz,
+        slam_launch,
+        delayed_nav2,
+        delayed_rviz,
         pellet_manager
     ])
