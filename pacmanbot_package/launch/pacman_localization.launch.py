@@ -10,32 +10,38 @@ def generate_launch_description():
     tb4_nav_share = get_package_share_directory('turtlebot4_navigation')
     tb4_viz_share = get_package_share_directory('turtlebot4_viz')
 
-    common_args = {
-        'namespace': '/robot_15',
-        'use_sim_time': 'false',
-        'tf_topic': '/robot_15/tf',
-        'tf_static_topic': '/robot_15/tf_static',
-    }
+    nav2_params = '/home/eva/nav2_custom.yaml'
+    map_file = '/home/eva/ros2_ws/src/PacManBot_ROS2/maps/map_01.yaml'  # change if needed
 
-    slam_launch = IncludeLaunchDescription(
+    localization_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(tb4_nav_share, 'launch', 'slam.launch.py')
+            os.path.join(tb4_nav_share, 'launch', 'localization.launch.py')
         ),
-        launch_arguments=common_args.items()
+        launch_arguments={
+            'map': map_file,
+            'namespace': '/robot_15',
+        }.items()
     )
 
     nav2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(tb4_nav_share, 'launch', 'nav2.launch.py')
         ),
-        launch_arguments=common_args.items()
+        launch_arguments={
+            'namespace': '/robot_15',
+            'params_file': nav2_params,
+            'tf_topic': '/robot_15/tf',
+            'tf_static_topic': '/robot_15/tf_static',
+        }.items()
     )
 
     rviz_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(tb4_viz_share, 'launch', 'view_navigation.launch.py')
         ),
-        launch_arguments=common_args.items()
+        launch_arguments={
+            'namespace': '/robot_15',
+        }.items()
     )
 
     pellet_manager = Node(
@@ -46,17 +52,17 @@ def generate_launch_description():
     )
 
     delayed_nav2 = TimerAction(
-        period=8.0,
+        period=5.0,
         actions=[nav2_launch]
     )
 
     delayed_rviz = TimerAction(
-        period=10.0,
+        period=7.0,
         actions=[rviz_launch]
     )
 
     return LaunchDescription([
-        slam_launch,
+        localization_launch,
         delayed_nav2,
         delayed_rviz,
         pellet_manager

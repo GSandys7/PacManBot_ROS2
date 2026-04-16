@@ -32,6 +32,7 @@ setup(
             'planner_stub = pacmanbot_package.planner_stub:main',
             'game_light_node = pacmanbot_package.game_light_node:main',
             'pellet_manager = pacmanbot_package.pellet_manager:main',
+            'game_event_mapper = pacmanbot_package.game_event_mapper:main',
         ],
     },
 )

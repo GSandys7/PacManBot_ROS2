@@ -9,7 +9,7 @@ from builtin_interfaces.msg import Duration
 from irobot_create_msgs.msg import AudioNote, AudioNoteVector
 from irobot_create_msgs.action import AudioNoteSequence
 
-from pacmanbot_planning.audio_library import SONGS
+from pacmanbot_package.audio_library import SONGS
 
 
 '''

@@ -17,10 +17,23 @@ class PelletManager(Node):
     def __init__(self):
         super().__init__('pellet_manager')
 
+        # Namespace and frame configuration
         self.robot_ns = '/robot_15'
-
-        # Defines TF frame for pellet markers
         self.map_frame = 'map'
+
+        # Map file configuration
+        self.map_package = 'pacmanbot_package'
+        self.map_yaml_name = 'map_01.yaml'
+
+        # Pellet spawn configuration
+        self.spacing_m = 2
+        self.wall_clearance_m = 0.3
+        self.free_pixel_threshold = 250
+
+        # Marker appearance configuration
+        self.pellet_diameter_m = 0.12
+        self.pellet_z_m = 0.10
+        self.marker_publish_period_s = 1.0
 
         # Publishes remaining pellets as markers for RViz and planner consumption
         self.marker_pub = self.create_publisher(
@@ -41,7 +54,7 @@ class PelletManager(Node):
         self.world_pellets = self.load_and_generate_pellets()
 
         # Republishes pellet markers periodically
-        self.timer = self.create_timer(1.0, self.publish_markers)
+        self.timer = self.create_timer(self.marker_publish_period_s, self.publish_markers)
 
         self.get_logger().info(
             f'Generated {len(self.world_pellets)} pellets in frame "{self.map_frame}"'
@@ -49,8 +62,8 @@ class PelletManager(Node):
 
     # Loads occupancy map and samples valid free-space pellet positions
     def load_and_generate_pellets(self):
-        pkg_share = get_package_share_directory('pacmanbot_package')
-        yaml_path = os.path.join(pkg_share, 'maps', 'map_01.yaml')
+        pkg_share = get_package_share_directory(self.map_package)
+        yaml_path = os.path.join(pkg_share, 'maps', self.map_yaml_name)
 
         with open(yaml_path, 'r') as f:
             map_yaml = yaml.safe_load(f)
@@ -62,30 +75,48 @@ class PelletManager(Node):
         map_img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
         if map_img is None:
-            self.get_logger().error('Failed to load map image')
+            self.get_logger().error(f'Failed to load map image: {image_path}')
             return []
 
         height, width = map_img.shape
-        free_mask = map_img > 250
 
-        # Controls distance between pellets in meters
-        spacing_m = 3.0
-        step = max(1, int(spacing_m / resolution))
+        # Treats bright pixels as free space for a standard trinary occupancy map
+        free_mask = map_img > self.free_pixel_threshold
+
+        # Converts configurable spacing and wall clearance from meters to pixels
+        step_px = max(1, int(round(self.spacing_m / resolution)))
+        wall_clearance_px = max(1, int(round(self.wall_clearance_m / resolution)))
+
+        self.get_logger().info(
+            f'Map loaded: {width}x{height}, resolution={resolution:.3f} m/px, '
+            f'spacing={self.spacing_m:.2f} m ({step_px} px), '
+            f'wall_clearance={self.wall_clearance_m:.2f} m ({wall_clearance_px} px)'
+        )
 
         pellets_pixels = []
 
-        for y in range(0, height, step):
-            for x in range(0, width, step):
-                # Skips occupied cells
+        for y in range(0, height, step_px):
+            for x in range(0, width, step_px):
+                # Skips occupied or unknown cells
                 if not free_mask[y, x]:
                     continue
 
-                # Skips boundary cells where neighborhood checks would be unsafe
-                if y < 2 or y >= height - 2 or x < 2 or x >= width - 2:
+                # Skips boundary cells where neighborhood checks would go out of bounds
+                if (
+                    x < wall_clearance_px or
+                    x >= width - wall_clearance_px or
+                    y < wall_clearance_px or
+                    y >= height - wall_clearance_px
+                ):
                     continue
 
-                # Skips cells too close to walls
-                if not np.all(free_mask[y - 2:y + 2, x - 2:x + 2]):
+                # Skips cells too close to walls by requiring a full free neighborhood
+                neighborhood = free_mask[
+                    y - wall_clearance_px:y + wall_clearance_px + 1,
+                    x - wall_clearance_px:x + wall_clearance_px + 1
+                ]
+
+                if not np.all(neighborhood):
                     continue
 
                 pellets_pixels.append((x, y))
@@ -152,15 +183,15 @@ class PelletManager(Node):
 
             marker.pose.position.x = pellet['x']
             marker.pose.position.y = pellet['y']
-            marker.pose.position.z = 0.1
+            marker.pose.position.z = self.pellet_z_m
             marker.pose.orientation.x = 0.0
             marker.pose.orientation.y = 0.0
             marker.pose.orientation.z = 0.0
             marker.pose.orientation.w = 1.0
 
-            marker.scale.x = 0.12
-            marker.scale.y = 0.12
-            marker.scale.z = 0.12
+            marker.scale.x = self.pellet_diameter_m
+            marker.scale.y = self.pellet_diameter_m
+            marker.scale.z = self.pellet_diameter_m
 
             marker.color.r = 1.0
             marker.color.g = 1.0
@@ -178,3 +209,7 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

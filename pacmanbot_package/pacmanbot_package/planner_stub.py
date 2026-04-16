@@ -8,6 +8,7 @@ from rclpy.action import ActionClient
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 
 from std_msgs.msg import Int32
+from std_msgs.msg import String
 from visualization_msgs.msg import MarkerArray, Marker
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from nav2_msgs.action import NavigateToPose
@@ -50,6 +51,11 @@ class PlannerStub(Node):
         self.remove_pub = self.create_publisher(
             Int32,
             f'{self.robot_ns}/remove_pellet',
+            10
+        )
+        self.sound_pub = self.create_publisher(
+            String,
+            f'{self.robot_ns}/game_sound',
             10
         )
 
@@ -209,6 +215,9 @@ class PlannerStub(Node):
 
         if status == GoalStatus.STATUS_SUCCEEDED:
             self.get_logger().info(f'Pellet {pellet_id} reached successfully')
+            sound_msg = String()
+            sound_msg.data = 'pellet'
+            self.sound_pub.publish(sound_msg)
         else:
             self.get_logger().warn(
                 f'Pellet {pellet_id} unreachable or failed, status={status}'
