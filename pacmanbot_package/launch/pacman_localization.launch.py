@@ -7,11 +7,16 @@ import os
 
 
 def generate_launch_description():
+    DELAY = 5.0 
+
     tb4_nav_share = get_package_share_directory('turtlebot4_navigation')
     tb4_viz_share = get_package_share_directory('turtlebot4_viz')
+    pacman_share = get_package_share_directory('pacmanbot_package')
 
     nav2_params = '/home/eva/nav2_custom.yaml'
-    map_file = '/home/eva/ros2_ws/src/PacManBot_ROS2/maps/map_01.yaml'  # change if needed
+    map_file = os.path.join(pacman_share, 'maps', 'map_01.yaml')
+    print("MAP FILE:", map_file)
+    print("PACMAN SHARE:", pacman_share)
 
     localization_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -51,19 +56,71 @@ def generate_launch_description():
         output='screen'
     )
 
-    delayed_nav2 = TimerAction(
-        period=5.0,
-        actions=[nav2_launch]
+    audio_node = Node(
+        package='pacmanbot_package',
+        executable='audio_node',
+        name='audio_node',
+        output='screen'
     )
 
-    delayed_rviz = TimerAction(
-        period=7.0,
-        actions=[rviz_launch]
+    game_light_node = Node(
+        package='pacmanbot_package',
+        executable='game_light_node',
+        name='game_light_node',
+        output='screen'
+    )
+
+    game_event_mapper = Node(
+        package='pacmanbot_package',
+        executable='game_event_mapper',
+        name='game_event_mapper',
+        output='screen'
+    )
+
+    planner_stub = Node(
+        package='pacmanbot_package',
+        executable='planner_stub',
+        name='planner_stub',
+        output='screen'
     )
 
     return LaunchDescription([
         localization_launch,
-        delayed_nav2,
-        delayed_rviz,
-        pellet_manager
+
+        TimerAction(
+            period=DELAY,
+            actions=[
+                nav2_launch,
+
+                TimerAction(
+                    period=DELAY,
+                    actions=[
+                        pellet_manager,
+                        audio_node,
+                        game_light_node,
+
+                        TimerAction(
+                            period=DELAY,
+                            actions=[
+                                game_event_mapper,
+
+                                TimerAction(
+                                    period=DELAY,
+                                    actions=[
+                                        planner_stub,
+
+                                        TimerAction(
+                                            period=DELAY,
+                                            actions=[
+                                                rviz_launch
+                                            ]
+                                        )
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
+                )
+            ]
+        )
     ])
