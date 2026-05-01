@@ -46,6 +46,9 @@ class AudioNode(Node):
         )
 
         self.busy = False
+        self.same_sound_debounce_s = 0.25
+        self.last_sound_name = None
+        self.last_sound_time = None
         self.get_logger().info('Audio node ready')
 
     def sound_callback(self, msg: String):
@@ -56,10 +59,24 @@ class AudioNode(Node):
             self.get_logger().warning(f'Unknown sound: {sound_name}')
             return
 
+        now = self.get_clock().now()
+        if (
+            sound_name == self.last_sound_name and
+            self.last_sound_time is not None and
+            (now - self.last_sound_time).nanoseconds <
+            self.same_sound_debounce_s * 1e9
+        ):
+            self.get_logger().info(
+                f'Ignoring duplicate sound "{sound_name}" inside debounce window'
+            )
+            return
+
         if self.busy:
             self.get_logger().info(f'Ignoring sound "{sound_name}" because audio is busy')
             return
 
+        self.last_sound_name = sound_name
+        self.last_sound_time = now
         melody = SONGS[sound_name]
         self.play_melody(melody)
 
@@ -110,9 +127,14 @@ class AudioNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = AudioNode()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
