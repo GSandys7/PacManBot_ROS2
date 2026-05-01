@@ -1,0 +1,7 @@
+<library path="pacmanbot_rviz_plugins">
+  <class name="pacmanbot_rviz_plugins/Game Control"
+         type="pacmanbot_rviz_plugins::GameControlPanel"
+         base_class_type="rviz_common::Panel">
+    <description>PacManBot game start, reset, progress, and score panel.</description>
+  </class>
+</library>
