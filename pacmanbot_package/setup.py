@@ -1,6 +1,7 @@
-from setuptools import find_packages, setup
-import os
 from glob import glob
+import os
+
+from setuptools import find_packages, setup
 
 package_name = 'pacmanbot_package'
 
@@ -40,6 +41,7 @@ setup(
             'game_controller = pacmanbot_package.game_controller:main',
             'clyde_ghost_node = pacmanbot_package.clyde_ghost_node:main',
             'wait_for_amcl_pose = pacmanbot_package.wait_for_amcl_pose:main',
+            'game_state_demo_gui = pacmanbot_package.game_state_demo_gui:main',
         ],
     },
 )

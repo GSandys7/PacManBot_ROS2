@@ -1,8 +1,7 @@
+from irobot_create_msgs.msg import LedColor, LightringLeds
 import rclpy
 from rclpy.node import Node
-
 from std_msgs.msg import String
-from irobot_create_msgs.msg import LightringLeds, LedColor
 
 
 class GameLightNode(Node):
@@ -34,7 +33,9 @@ class GameLightNode(Node):
         self.animation_index = 0
         self.loop_animation = False
 
-        self.get_logger().info('Game light node started. Listening on /robot_15/game_light')
+        self.get_logger().info(
+            'Game light node started. Listening on /robot_15/game_light'
+        )
 
     def game_light_callback(self, msg: String):
         command = msg.data.strip().lower()
@@ -46,11 +47,17 @@ class GameLightNode(Node):
         elif command == 'game over':
             self.start_game_over_animation()
 
-        elif command == 'power pellet':
+        elif command == 'pellet':
+            self.start_pellet_animation()
+
+        elif command in ['power pellet', 'powerup']:
             self.start_power_pellet_animation()
 
         elif command == 'pacman':
             self.start_pacman_animation()
+
+        elif command == 'win':
+            self.start_win_animation()
 
         elif command == 'blinky caught':
             self.start_ghost_caught_animation((255, 0, 0))
@@ -63,6 +70,18 @@ class GameLightNode(Node):
 
         elif command == 'clyde caught':
             self.start_ghost_caught_animation((255, 80, 0))
+
+        elif command == 'blinky killed':
+            self.start_ghost_killed_animation((255, 0, 0))
+
+        elif command == 'pinky killed':
+            self.start_ghost_killed_animation((255, 60, 180))
+
+        elif command == 'inky killed':
+            self.start_ghost_killed_animation((0, 0, 255))
+
+        elif command == 'clyde killed':
+            self.start_ghost_killed_animation((255, 80, 0))
 
         elif command == 'off':
             self.stop_animation()
@@ -176,11 +195,32 @@ class GameLightNode(Node):
 
         self.get_logger().info('Started power pellet animation')
 
+    def start_pellet_animation(self):
+        self.stop_animation()
+
+        yellow = (255, 180, 0)
+        dim_yellow = (80, 55, 0)
+        off = (0, 0, 0)
+
+        frames = [
+            [yellow, off, off, off, yellow, yellow],
+            [yellow, yellow, off, yellow, yellow, yellow],
+            [dim_yellow] * 6,
+            [off] * 6,
+        ]
+
+        self.animation_frames = frames
+        self.animation_index = 0
+        self.current_animation = 'pellet'
+        self.loop_animation = False
+        self.anim_timer.reset()
+
+        self.get_logger().info('Started pellet chomp animation')
+
     def start_pacman_animation(self):
         self.stop_animation()
 
         yellow = (255, 180, 0)
-        red = (255, 0, 0)
         off = (0, 0, 0)
 
         frames = [
@@ -195,6 +235,33 @@ class GameLightNode(Node):
         self.anim_timer.reset()
 
         self.get_logger().info('Started Pac-Man chomp animation')
+
+    def start_win_animation(self):
+        self.stop_animation()
+
+        yellow = (255, 180, 0)
+        white = (255, 255, 255)
+        blue = (0, 80, 255)
+        pink = (255, 60, 180)
+        orange = (255, 80, 0)
+        off = (0, 0, 0)
+
+        frames = [
+            [yellow, white, blue, pink, orange, white],
+            [white, yellow, white, blue, pink, orange],
+            [orange, white, yellow, white, blue, pink],
+            [pink, orange, white, yellow, white, blue],
+            [off] * 6,
+            [white] * 6,
+        ]
+
+        self.animation_frames = frames
+        self.animation_index = 0
+        self.current_animation = 'win'
+        self.loop_animation = True
+        self.anim_timer.reset()
+
+        self.get_logger().info('Started win celebration animation')
 
     def start_ghost_caught_animation(self, ghost_color):
         self.stop_animation()
@@ -212,7 +279,35 @@ class GameLightNode(Node):
         self.loop_animation = True
         self.anim_timer.reset()
 
-        self.get_logger().info(f'Started ghost caught animation with color {ghost_color}')
+        self.get_logger().info(
+            f'Started ghost caught animation with color {ghost_color}'
+        )
+
+    def start_ghost_killed_animation(self, ghost_color):
+        self.stop_animation()
+
+        red = (255, 0, 0)
+        dim_red = (90, 0, 0)
+        off = (0, 0, 0)
+
+        frames = [
+            [ghost_color] * 6,
+            [red] * 6,
+            [ghost_color, red, ghost_color, red, ghost_color, red],
+            [red, ghost_color, red, ghost_color, red, ghost_color],
+            [dim_red] * 6,
+            [off] * 6,
+        ]
+
+        self.animation_frames = frames
+        self.animation_index = 0
+        self.current_animation = 'ghost_killed'
+        self.loop_animation = True
+        self.anim_timer.reset()
+
+        self.get_logger().info(
+            f'Started ghost killed blink with color {ghost_color}'
+        )
 
     def animation_step_callback(self):
         if not self.animation_frames:
@@ -276,7 +371,9 @@ def main(args=None):
             try:
                 node.publish_all_off()
             except Exception as exc:
-                node.get_logger().warn(f'Could not turn lights off during shutdown: {exc}')
+                node.get_logger().warn(
+                    f'Could not turn lights off during shutdown: {exc}'
+                )
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

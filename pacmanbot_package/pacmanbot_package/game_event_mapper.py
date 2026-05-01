@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
+from geometry_msgs.msg import TwistStamped
 import rclpy
 from rclpy.node import Node
-
 from std_msgs.msg import String
-from geometry_msgs.msg import TwistStamped
 
 
 class GameEventMapper(Node):
@@ -89,10 +88,10 @@ class GameEventMapper(Node):
             self.handle_start_theatrical_event()
 
         elif event == 'pellet':
-            self.send_light('power pellet')
+            self.send_light('pellet')
             self.send_sound('pellet')
 
-        elif event == 'power pellet':
+        elif event in ['power pellet', 'powerup']:
             self.send_light('power pellet')
             self.send_sound('power pellet')
 
@@ -112,7 +111,10 @@ class GameEventMapper(Node):
             self.send_light('clyde caught')
             self.send_sound('ghost')
 
-        elif event in ['blinky killed', 'pinky killed', 'inky killed', 'clyde killed', 'killed', 'death']:
+        elif event in ['blinky killed', 'pinky killed', 'inky killed', 'clyde killed']:
+            self.handle_death_event(event)
+
+        elif event in ['killed', 'death']:
             self.handle_death_event()
 
         elif event == 'game over':
@@ -121,6 +123,7 @@ class GameEventMapper(Node):
             self.start_motion('death', self.death_motion_duration_s)
 
         elif event == 'win':
+            self.send_light('win')
             self.send_sound('win')
 
         elif event == 'reset':
@@ -129,9 +132,9 @@ class GameEventMapper(Node):
         else:
             self.get_logger().warning(f'Unknown event: {event}')
 
-    def handle_death_event(self):
+    def handle_death_event(self, light_command='game over'):
         self.get_logger().info('Handling death event')
-        self.send_light('game over')
+        self.send_light(light_command)
         self.send_sound('death')
         self.start_motion('death', self.death_motion_duration_s)
 
@@ -204,12 +207,16 @@ class GameEventMapper(Node):
 
         # Death uses equal left-right shake
         if self.active_motion_mode == 'death':
-            msg.twist.angular.z = self.current_shake_direction * self.shake_angular_z
+            msg.twist.angular.z = (
+                self.current_shake_direction * self.shake_angular_z
+            )
 
             self.time_until_direction_flip -= self.motion_publish_period_s
             if self.time_until_direction_flip <= 0.0:
                 self.current_shake_direction *= -1.0
-                self.time_until_direction_flip = self.shake_direction_interval_s
+                self.time_until_direction_flip = (
+                    self.shake_direction_interval_s
+                )
 
         # Theatrical start uses continuous spin
         elif self.active_motion_mode == 'start_theatrical':
@@ -218,7 +225,9 @@ class GameEventMapper(Node):
             self.time_until_light_restart -= self.motion_publish_period_s
             if self.time_until_light_restart <= 0.0:
                 self.send_light('start')
-                self.time_until_light_restart = self.start_light_restart_period_s
+                self.time_until_light_restart = (
+                    self.start_light_restart_period_s
+                )
 
         else:
             msg.twist.angular.z = 0.0
@@ -246,7 +255,9 @@ def main(args=None):
             try:
                 node.publish_stop()
             except Exception as exc:
-                node.get_logger().warn(f'Could not publish stop during shutdown: {exc}')
+                node.get_logger().warn(
+                    f'Could not publish stop during shutdown: {exc}'
+                )
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
