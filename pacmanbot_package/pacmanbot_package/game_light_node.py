@@ -272,6 +272,11 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.publish_all_off()
+        if rclpy.ok():
+            try:
+                node.publish_all_off()
+            except Exception as exc:
+                node.get_logger().warn(f'Could not turn lights off during shutdown: {exc}')
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()

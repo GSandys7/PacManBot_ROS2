@@ -9,6 +9,7 @@ import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import Int32
+from std_srvs.srv import Trigger
 from visualization_msgs.msg import Marker, MarkerArray
 from ament_index_python.packages import get_package_share_directory
 
@@ -49,6 +50,11 @@ class PelletManager(Node):
             self.remove_pellet_callback,
             10
         )
+        self.reset_srv = self.create_service(
+            Trigger,
+            f'{self.robot_ns}/reset_pellets',
+            self.reset_pellets_callback
+        )
 
         # Loads map and generates pellet list
         self.world_pellets = self.load_and_generate_pellets()
@@ -59,6 +65,17 @@ class PelletManager(Node):
         self.get_logger().info(
             f'Generated {len(self.world_pellets)} pellets in frame "{self.map_frame}"'
         )
+
+    def reset_pellets_callback(self, request, response):
+        del request
+
+        self.world_pellets = self.load_and_generate_pellets()
+        self.publish_markers()
+
+        response.success = True
+        response.message = f'Regenerated {len(self.world_pellets)} pellets'
+        self.get_logger().info(response.message)
+        return response
 
     # Loads occupancy map and samples valid free-space pellet positions
     def load_and_generate_pellets(self):
@@ -206,9 +223,14 @@ class PelletManager(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = PelletManager()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
