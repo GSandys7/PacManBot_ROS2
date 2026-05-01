@@ -89,7 +89,7 @@ class GameEventMapper(Node):
             self.handle_start_theatrical_event()
 
         elif event == 'pellet':
-            self.send_light('pacman')
+            self.send_light('power pellet')
             self.send_sound('pellet')
 
         elif event == 'power pellet':
@@ -119,6 +119,12 @@ class GameEventMapper(Node):
             self.send_light('game over')
             self.send_sound('death')
             self.start_motion('death', self.death_motion_duration_s)
+
+        elif event == 'win':
+            self.send_sound('win')
+
+        elif event == 'reset':
+            self.stop_motion()
 
         else:
             self.get_logger().warning(f'Unknown event: {event}')
@@ -236,9 +242,14 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.publish_stop()
+        if rclpy.ok():
+            try:
+                node.publish_stop()
+            except Exception as exc:
+                node.get_logger().warn(f'Could not publish stop during shutdown: {exc}')
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
